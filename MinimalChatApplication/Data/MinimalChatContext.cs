@@ -16,9 +16,22 @@ namespace MinimalChatApplication.Data
         {
             modelBuilder.Entity<User>().ToTable("User");
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
+            modelBuilder.Entity<Message>().ToTable("Message");
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Sender)
+                .WithMany()
+                .HasForeignKey(m => m.SenderId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            modelBuilder.Entity<Message>()
+                .HasOne(m => m.Receiver)
+                .WithMany()
+                .HasForeignKey(m => m.ReceiverId);
         }
         public DbSet<User> Users { get; set; }
-       
+        public DbSet<Message> Message { get; set; }
+
 
     }
 
