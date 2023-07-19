@@ -15,6 +15,7 @@ namespace MinimalChatApplication.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<User>().ToTable("User");
+            modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
         }
         public DbSet<User> Users { get; set; }
        
