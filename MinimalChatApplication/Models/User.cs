@@ -14,5 +14,6 @@ namespace MinimalChatApplication.Models
 
         [Required]
         public string Password { get; set; }
+        
     }
 }
