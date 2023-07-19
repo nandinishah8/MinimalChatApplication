@@ -1,5 +1,8 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using MinimalChatApplication.Data;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -11,6 +14,25 @@ builder.Services.AddDbContext<MinimalChatContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("MinimalChatContext")));
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
+
+// Add JWT authentication
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+         
+             options.RequireHttpsMetadata = false;
+             options.SaveToken = true;
+             options.TokenValidationParameters = new TokenValidationParameters
+             {
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidAudience = builder.Configuration["Jwt:Audience"],
+                ValidIssuer = builder.Configuration["Jwt:Issuer"],
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your_secret_key")) // Replace with your actual secret key
+             };
+    });
+
+
 
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
@@ -41,9 +63,12 @@ using (var scope = app.Services.CreateScope())
     // DbInitializer.Initialize(context);
 }
 
+
+
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+app.UseAuthentication();
 
 app.MapControllers();
 
