@@ -34,22 +34,18 @@ namespace MinimalChatApplication.Controllers
 
         public async Task<ActionResult<IEnumerable<User>>> GetUser()
         {
-            // Get the email of the authenticated user making the request
-            var userEmail = User.Identity.Name;
+            
+            int id = GetUserId(HttpContext);
 
-            // Retrieve the list of users excluding the current user
-            var users = _context.Users
-                .Where(u => u.Email != userEmail)
-                .Select(u => new
-                {
-                    u.Id,
-                    u.Name,
-                    u.Email
-                })
-                .ToList();
+            if (id == -1)
+            {
+                return Unauthorized(new { message = "Unauthorized access" });
+            }
 
-            return Ok(new { users });
+            var users = _context.Users.Where(u => u.Id != id).ToList();
+            return Ok(users);
         }
+    
 
         // GET: api/Users/5
         [HttpGet("{id}")]
@@ -221,7 +217,7 @@ namespace MinimalChatApplication.Controllers
             var user = _context.Users.FirstOrDefault(u => u.Token == token);
 
             return user?.Id ?? -1;
-        }
+        } 
 
 
 
