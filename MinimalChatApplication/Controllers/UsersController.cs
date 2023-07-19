@@ -14,6 +14,7 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 
 namespace MinimalChatApplication.Controllers
 {
@@ -30,14 +31,21 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Users
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<User>>> GetUsers()
+
+        public async Task<ActionResult<IEnumerable<User>>> GetUser()
         {
-            if (_context.Users == null)
+            
+            int id = GetUserId(HttpContext);
+
+            if (id == -1)
             {
-                return NotFound();
+                return Unauthorized(new { message = "Unauthorized access" });
             }
-            return await _context.Users.ToListAsync();
+
+            var users = _context.Users.Where(u => u.Id != id).ToList();
+            return Ok(users);
         }
+    
 
         // GET: api/Users/5
         [HttpGet("{id}")]
@@ -200,6 +208,16 @@ namespace MinimalChatApplication.Controllers
 
             return Ok(user);
         }
+        private int GetUserId(HttpContext context)
+        {
+            var authorizationHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+
+            var token = authorizationHeader?.Replace("Bearer ", "");
+
+            var user = _context.Users.FirstOrDefault(u => u.Token == token);
+
+            return user?.Id ?? -1;
+        } 
 
 
 
@@ -207,7 +225,7 @@ namespace MinimalChatApplication.Controllers
         // Helper method to generate JWT token
         private string GenerateJwtToken(User user)
         {
-            var key = Encoding.ASCII.GetBytes("YOUR_SECRET_KEY_FOR_JWT"); // Replace with your secret key for JWT
+            var key = Encoding.ASCII.GetBytes("YOUR_SECRET_KEY_FOR_JWT"); 
 
             var tokenHandler = new JwtSecurityTokenHandler();
             var tokenDescriptor = new SecurityTokenDescriptor
@@ -218,7 +236,7 @@ namespace MinimalChatApplication.Controllers
                     new Claim(ClaimTypes.Name, user.Name),
                     new Claim(ClaimTypes.Email, user.Email)
                 }),
-                Expires = DateTime.UtcNow.AddDays(1), // Token expiration time (adjust as needed)
+                Expires = DateTime.UtcNow.AddDays(1), // Token expiration time
                 SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
             };
 
