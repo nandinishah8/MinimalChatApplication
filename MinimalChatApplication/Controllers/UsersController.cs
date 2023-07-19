@@ -2,12 +2,18 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MinimalChatApplication.Data;
 using MinimalChatApplication.Models;
 using BCrypt.Net;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace MinimalChatApplication.Controllers
 {
@@ -97,7 +103,7 @@ namespace MinimalChatApplication.Controllers
             return CreatedAtAction("GetUser", new { id = user.Id }, user);
         }
 
-        // POST: api/Users/register
+        // POST: api/register
         [HttpPost("/api/register")]
         public async Task<ActionResult<User>> Register(User model)
         {
@@ -158,15 +164,66 @@ namespace MinimalChatApplication.Controllers
         // Hash the password using a suitable hashing algorithm (e.g., bcrypt)
         private string HashPassword(string password)
         {
-            
+
             // Generate a random salt
-        string salt = BCrypt.Net.BCrypt.GenerateSalt();
+            string salt = BCrypt.Net.BCrypt.GenerateSalt();
 
-        // Hash the password with the salt
-        string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password, salt);
+            // Hash the password with the salt
+            string hashedPassword = BCrypt.Net.BCrypt.HashPassword(password, salt);
 
-        return hashedPassword;
+            return hashedPassword;
         }
 
+        // POST: api/login
+        [HttpPost("/api/login")]
+        public async Task<ActionResult<User>> Login(String email, String Password)
+        {
+            if (!ModelState.IsValid)
+            {
+                return BadRequest(new { error = "Invalid request data." });
+            }
+
+            // Find the user by email
+            var user = await _context.Users.FirstOrDefaultAsync (u => u.Email == email);
+
+            if (user == null || !BCrypt.Net.BCrypt.Verify(Password, user.Password))
+            {
+                return Unauthorized(new { error = "Incorrect email or password." });
+            }
+
+            // Login successful, generate JWT token and return user profile
+            var profile = new { user.Id, user.Name, user.Email };
+            var token = GenerateJwtToken(user);
+
+            user.Token = token;
+            await _context.SaveChangesAsync();
+
+            return Ok(user);
+        }
+
+
+
+
+        // Helper method to generate JWT token
+        private string GenerateJwtToken(User user)
+        {
+            var key = Encoding.ASCII.GetBytes("YOUR_SECRET_KEY_FOR_JWT"); // Replace with your secret key for JWT
+
+            var tokenHandler = new JwtSecurityTokenHandler();
+            var tokenDescriptor = new SecurityTokenDescriptor
+            {
+                Subject = new ClaimsIdentity(new Claim[]
+                {
+                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                    new Claim(ClaimTypes.Name, user.Name),
+                    new Claim(ClaimTypes.Email, user.Email)
+                }),
+                Expires = DateTime.UtcNow.AddDays(1), // Token expiration time (adjust as needed)
+                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
+            };
+
+            var token = tokenHandler.CreateToken(tokenDescriptor);
+            return tokenHandler.WriteToken(token);
+        }
     }
 }
