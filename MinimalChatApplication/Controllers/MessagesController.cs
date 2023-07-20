@@ -65,31 +65,39 @@ namespace MinimalChatApplication.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMessage(int id, Message message)
         {
-            if (id != message.Id)
+            var userId = GetUserId(HttpContext);
+
+            if (userId == -1)
             {
-                return BadRequest();
+                return Unauthorized(new { message = "Unauthorized access" });
             }
 
-            _context.Entry(message).State = EntityState.Modified;
-
-            try
+            if (!ModelState.IsValid)
             {
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!MessageExists(id))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
+                return BadRequest(new { message = "invalid request parameter." });
             }
 
-            return NoContent();
+            var existingMessage = await _context.Messages.FindAsync(id);
+
+            Console.WriteLine(existingMessage);
+
+            if (existingMessage == null)
+            {
+                return NotFound(new { error = "Message not found." });
+            }
+
+            if (message == null)
+            {
+                return NotFound(new { message = "User or conversation not found" });
+            }
+
+            existingMessage.Content = message.Content;
+            await _context.SaveChangesAsync();
+
+            return Ok(message);
         }
+
+    
 
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
@@ -151,3 +159,4 @@ namespace MinimalChatApplication.Controllers
 
     }
 }
+
