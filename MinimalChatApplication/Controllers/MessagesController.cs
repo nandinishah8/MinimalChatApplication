@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MinimalChatApplication.Data;
 using MinimalChatApplication.Models;
+using Microsoft.AspNetCore.Authorization;
 
 namespace MinimalChatApplication.Controllers
 {
@@ -127,6 +128,7 @@ namespace MinimalChatApplication.Controllers
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
+        [Authorize]
         public async Task<IActionResult> DeleteMessage(int id)
         {
             var message = await _context.Messages.FindAsync(id);
@@ -135,11 +137,19 @@ namespace MinimalChatApplication.Controllers
                 return NotFound(new { message = "Message not found" });
             }
 
+            // Check if the user is authorized to delete the message (should be the sender)
+            int userId = GetUserId(HttpContext);
+            if (message.SenderId != userId)
+            {
+                return Unauthorized(new { error = "Unauthorized access" });
+            }
+
             _context.Messages.Remove(message);
             await _context.SaveChangesAsync();
 
-            return NoContent();
+            return Ok(new { message = "Message deleted successfully" });
         }
+    
 
         private bool MessageExists(int id)
         {
