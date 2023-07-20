@@ -30,7 +30,7 @@ namespace MinimalChatApplication.Data
                 .HasForeignKey(m => m.ReceiverId);
         }
         public DbSet<User> Users { get; set; }
-        public DbSet<Message> Message { get; set; }
+        public DbSet<Message> Messages { get; set; }
 
 
     }
