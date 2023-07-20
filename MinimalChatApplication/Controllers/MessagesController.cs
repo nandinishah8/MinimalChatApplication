@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using MinimalChatApplication.Data;
 using MinimalChatApplication.Models;
 using Microsoft.AspNetCore.Authorization;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace MinimalChatApplication.Controllers
 {
@@ -25,26 +26,43 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Messages
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Message>>> GetMessage(Message message)
+        public async Task<ActionResult<IEnumerable<Message>>> GetConversationHistory([FromQuery] History history)
         {
-            var userId = GetUserId(HttpContext);
+            int userId = GetUserId(HttpContext);
 
             if (userId == -1)
             {
                 return Unauthorized(new { message = "Unauthorized access" });
             }
 
-            if (!ModelState.IsValid)
+            if (history == null || history.userId <= 0)
             {
-                return BadRequest(new { message = "invalid request parameter." });
+                return BadRequest(new { message = "Invalid request parameters" });
             }
+            // Retrieve the conversation history based on the provided parameters
+            var conversationHistory = await _context.Messages
+                .Where(m => (m.ReceiverId == userId && m.ReceiverId == history.userId)
+                            || (m.SenderId == history.userId && m.SenderId == userId))
+                .Where(m => history.before == default || m.Timestamp < history.before)
+                .OrderByDescending(m => history.sort == "desc" ? m.Timestamp : default)
+                .Take(history.count > 0 ? history.count : 20).Select(u => new
+                {
+                    id = u.Id,
+                    senderId = u.SenderId,
+                    receiverId = u.ReceiverId,
+                    content = u.Content,
+                    timestamp = u.Timestamp
+                })
+                     .ToListAsync();
 
-            if (message == null)
+            if (conversationHistory.Count == 0)
             {
                 return NotFound(new { message = "User or conversation not found" });
             }
 
-            return Ok(message);
+            return Ok(conversationHistory);
+
+
         }
 
         // GET: api/Messages/5
