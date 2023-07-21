@@ -17,6 +17,7 @@ namespace MinimalChatApplication.Data
             modelBuilder.Entity<User>().ToTable("User");
             modelBuilder.Entity<User>().HasIndex(u => u.Email).IsUnique();
             modelBuilder.Entity<Message>().ToTable("Message");
+            modelBuilder.Entity<Log>().ToTable("Log");
 
             modelBuilder.Entity<Message>()
                 .HasOne(m => m.Sender)
@@ -31,6 +32,7 @@ namespace MinimalChatApplication.Data
         }
         public DbSet<User> Users { get; set; }
         public DbSet<Message> Messages { get; set; }
+        public DbSet<Log> Logs { get; set; }
 
 
     }
