@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using MinimalChatApplication.Data;
+using MinimalChatApplication.Middlewares;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -9,6 +10,8 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container.
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<RequestLoggingMiddleware>();
+
 //configuring db path
 builder.Services.AddDbContext<MinimalChatContext>(options =>
 options.UseSqlServer(builder.Configuration.GetConnectionString("MinimalChatContext")));
@@ -69,6 +72,7 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 app.UseAuthentication();
+app.UseMiddleware<RequestLoggingMiddleware>();
 
 app.MapControllers();
 
