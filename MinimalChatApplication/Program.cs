@@ -25,13 +25,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
          
              options.RequireHttpsMetadata = false;
              options.SaveToken = true;
-             options.TokenValidationParameters = new TokenValidationParameters
+             options.TokenValidationParameters = new TokenValidationParameters()
              {
                 ValidateIssuer = true,
                 ValidateAudience = true,
                 ValidAudience = builder.Configuration["Jwt:Audience"],
                 ValidIssuer = builder.Configuration["Jwt:Issuer"],
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes("your_secret_key")) // Replace with your actual secret key
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))// Replace with your actual secret key
              };
     });
 

@@ -23,10 +23,12 @@ namespace MinimalChatApplication.Controllers
     public class UsersController : ControllerBase
     {
         private readonly MinimalChatContext _context;
+        IConfiguration _configuration;
 
-        public UsersController(MinimalChatContext context)
+        public UsersController(MinimalChatContext context, IConfiguration configuration)
         {
             _context = context;
+            _configuration = configuration;
         }
 
         // GET: api/Users
@@ -34,17 +36,26 @@ namespace MinimalChatApplication.Controllers
 
         public async Task<ActionResult<IEnumerable<User>>> GetUser()
         {
-            
-            int id = GetUserId(HttpContext);
+            var currentUser = HttpContext.User;
+            var id = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
-            if (id == -1)
+            if (!HttpContext.User.Identity.IsAuthenticated)
             {
                 return Unauthorized(new { message = "Unauthorized access" });
             }
+            var users = await _context.Users.Where(u => u.Id != Convert.ToInt32(id))
+                .Select(u => new User
+                {
+                    Id = u.Id,
+                    Name = u.Name,
+                    Email = u.Email,
 
-            var users = _context.Users.Where(u => u.Id != id).ToList();
+                })
+                .ToListAsync();
+
             return Ok(users);
         }
+    
     
 
         // GET: api/Users/5
@@ -96,20 +107,6 @@ namespace MinimalChatApplication.Controllers
             return NoContent();
         }
 
-        // POST: api/Users
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
-        public async Task<ActionResult<User>> PostUser(User user)
-        {
-            if (_context.Users == null)
-            {
-                return Problem("Entity set 'MinimalChatContext.Users'  is null.");
-            }
-            _context.Users.Add(user);
-            await _context.SaveChangesAsync();
-
-            return CreatedAtAction("GetUser", new { id = user.Id }, user);
-        }
 
         // POST: api/register
         [HttpPost("/api/register")]
@@ -225,23 +222,18 @@ namespace MinimalChatApplication.Controllers
         // Helper method to generate JWT token
         private string GenerateJwtToken(User user)
         {
-            var key = Encoding.ASCII.GetBytes("YOUR_SECRET_KEY_FOR_JWT"); 
+            var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
+            var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+            var token = new JwtSecurityToken(
+                _configuration["Jwt:Issuer"],
+                _configuration["Jwt:Audience"],
+                expires: DateTime.UtcNow.AddMinutes(10),
+                signingCredentials: signIn);
 
-            var tokenHandler = new JwtSecurityTokenHandler();
-            var tokenDescriptor = new SecurityTokenDescriptor
-            {
-                Subject = new ClaimsIdentity(new Claim[]
-                {
-                    new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                    new Claim(ClaimTypes.Name, user.Name),
-                    new Claim(ClaimTypes.Email, user.Email)
-                }),
-                Expires = DateTime.UtcNow.AddDays(1), // Token expiration time
-                SigningCredentials = new SigningCredentials(new SymmetricSecurityKey(key), SecurityAlgorithms.HmacSha256Signature)
-            };
 
-            var token = tokenHandler.CreateToken(tokenDescriptor);
-            return tokenHandler.WriteToken(token);
+            string Token = new JwtSecurityTokenHandler().WriteToken(token);
+
+            return Token;
         }
     }
 }

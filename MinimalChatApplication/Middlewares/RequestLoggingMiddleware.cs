@@ -18,7 +18,7 @@ namespace MinimalChatApplication.Middlewares
         public async Task InvokeAsync(HttpContext context, RequestDelegate next)
         {
             var userName = context.User.FindFirst(ClaimTypes.Name)?.Value;
-            Console.WriteLine(context.User);
+            //Console.WriteLine(context.User);
 
             string IP = context.Connection.RemoteIpAddress?.ToString();
             string RequestBody = await getRequestBodyAsync(context.Request);

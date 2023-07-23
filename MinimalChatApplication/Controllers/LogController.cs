@@ -13,7 +13,7 @@ namespace MinimalChatApplication.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize]
+    
     public class LogController : ControllerBase
     {
         private readonly MinimalChatContext _context;
