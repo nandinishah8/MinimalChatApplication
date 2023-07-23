@@ -49,6 +49,7 @@ namespace MinimalChatApplication.Controllers
                     Id = u.Id,
                     Name = u.Name,
                     Email = u.Email,
+                    Password = u.Password
 
                 })
                 .ToListAsync();
