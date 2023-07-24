@@ -25,28 +25,38 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Logs
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Logs>>> GetLogs()
+        public IActionResult GetLogs([FromQuery] DateTime? startTime = null, [FromQuery] DateTime? endTime = null)
         {
-            var logs = _context.Log.Select(u => new
+
+            var logsQuery = _context.Log.AsQueryable();
+
+            // Filter logs based on the provided start and end times, if any
+            if (startTime != null)
             {
-                Id = u.Id,
-                Ip = u.IP,
-                Username = u.Username,
-                RequestBody = u.RequestBody.Replace("\n", "").Replace("\"", "").Replace("\r", ""),
-                TimeStamp = u.Timestamp,
+                logsQuery = logsQuery.Where(l => l.Timestamp >= startTime);
+            }
+
+            if (endTime != null)
+            {
+                logsQuery = logsQuery.Where(l => l.Timestamp <= endTime);
+            }
+
+            var logs = logsQuery.ToList();
+
+            logs.ForEach(l =>
+            {
+                string cleanedString = l.RequestBody.Replace("\r\n", "").Replace(" ", "").Replace("\\", "");
+                Console.WriteLine(cleanedString);
+                l.RequestBody = cleanedString;
             });
 
-            if (logs == null)
+            // If no logs found based on the provided filter, return 404 Not Found
+            if (logs.Count == 0)
             {
-                return NotFound(new { message = "Logs not found" });
+                return NotFound(new { error = "No logs found." });
             }
 
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(new { message = "Invalid request parameters" });
-            }
-
-            return Ok(logs);
+            return Ok(new { Logs = logs });
 
 
         }

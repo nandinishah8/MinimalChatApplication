@@ -37,13 +37,16 @@ namespace MinimalChatApplication.Controllers
         public async Task<ActionResult<IEnumerable<User>>> GetUser()
         {
             var currentUser = HttpContext.User;
-            var id = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userId = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            var userName = currentUser.FindFirst(ClaimTypes.Name)?.Value;
+            var userEmail = currentUser.FindFirst(ClaimTypes.Email)?.Value;
+            await Console.Out.WriteLineAsync(userId);
 
             if (!HttpContext.User.Identity.IsAuthenticated)
             {
                 return Unauthorized(new { message = "Unauthorized access" });
             }
-            var users = await _context.Users.Where(u => u.Id != Convert.ToInt32(id))
+            var users = await _context.Users.Where(u => u.Id != Convert.ToInt32(userId))
                 .Select(u => new User
                 {
                     Id = u.Id,
@@ -223,13 +226,21 @@ namespace MinimalChatApplication.Controllers
         // Helper method to generate JWT token
         private string GenerateJwtToken(User user)
         {
+            var claims = new[]
+            {
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+                new Claim(ClaimTypes.Name, user.Name),
+                new Claim(ClaimTypes.Email, user.Email)
+            };
+
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["Jwt:Key"]));
             var signIn = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
             var token = new JwtSecurityToken(
                 _configuration["Jwt:Issuer"],
                 _configuration["Jwt:Audience"],
+                claims: claims,
                 expires: DateTime.UtcNow.AddMinutes(10),
-                signingCredentials: signIn);
+                signingCredentials: signIn) ;
 
 
             string Token = new JwtSecurityTokenHandler().WriteToken(token);

@@ -26,7 +26,7 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Messages
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Message>>> GetConversationHistory([FromQuery] History history)
+        public async Task<ActionResult<IEnumerable<Message>>> GetConversationHistory(History history)
         {
             int userId = GetUserId(HttpContext);
 
@@ -34,7 +34,7 @@ namespace MinimalChatApplication.Controllers
             {
                 return Unauthorized(new { message = "Unauthorized access" });
             }
-
+             
             if (history == null || history.userId <= 0)
             {
                 return BadRequest(new { message = "Invalid request parameters" });
@@ -129,6 +129,7 @@ namespace MinimalChatApplication.Controllers
             }
 
             int userId = GetUserId(HttpContext);
+            Console.WriteLine(userId); 
 
             if (userId == -1)
             {
@@ -146,7 +147,7 @@ namespace MinimalChatApplication.Controllers
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
-        [Authorize]
+
         public async Task<IActionResult> DeleteMessage(int id)
         {
             var message = await _context.Messages.FindAsync(id);
