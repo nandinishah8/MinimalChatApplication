@@ -11,6 +11,17 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 builder.Services.AddScoped<RequestLoggingMiddleware>();
+builder.Services.AddCors(options =>
+{
+    options.AddDefaultPolicy(builder =>
+    {
+        builder.AllowAnyOrigin()
+               .AllowAnyMethod()
+               .AllowAnyHeader();
+    });
+});
+
+
 
 //configuring db path
 builder.Services.AddDbContext<MinimalChatContext>(options =>
@@ -72,8 +83,10 @@ app.UseHttpsRedirection();
 
 app.UseAuthorization();
 app.UseAuthentication();
+app.UseCors();
+app.MapControllers();
+
 app.UseMiddleware<RequestLoggingMiddleware>();
 
-app.MapControllers();
 
 app.Run();

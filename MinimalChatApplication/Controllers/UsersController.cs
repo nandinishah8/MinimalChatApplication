@@ -185,7 +185,7 @@ namespace MinimalChatApplication.Controllers
 
         // POST: api/login
         [HttpPost("/api/login")]
-        public async Task<ActionResult<User>> Login(String email, String Password)
+        public async Task<ActionResult<User>> Login(loginRequest loginData)
         {
             if (!ModelState.IsValid)
             {
@@ -193,9 +193,9 @@ namespace MinimalChatApplication.Controllers
             }
 
             // Find the user by email
-            var user = await _context.Users.FirstOrDefaultAsync (u => u.Email == email);
+            var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginData.Email);
 
-            if (user == null || !BCrypt.Net.BCrypt.Verify(Password, user.Password))
+            if (user == null || !BCrypt.Net.BCrypt.Verify(loginData.Password, user.Password))
             {
                 return Unauthorized(new { error = "Incorrect email or password." });
             }
