@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -85,7 +86,7 @@ namespace MinimalChatApplication.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMessage(int id, Message message)
         {
-            var userId = GetUserId(HttpContext);
+            var userId = GetCurrentUserId();
 
             if (userId == -1)
             {
@@ -119,7 +120,7 @@ namespace MinimalChatApplication.Controllers
 
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPost]
+
         [HttpPost]
         public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
         {
@@ -127,10 +128,13 @@ namespace MinimalChatApplication.Controllers
             {
                 return BadRequest(new { message = "message sending failed due to validation errors." });
             }
+            var senderId = GetCurrentUserId();
 
             // Create a new Message object based on the request data
             var message = new Message
             {
+                SenderId = senderId,
+
                 Content = request.Content,
                 ReceiverId = request.ReceiverId,
                 Timestamp = DateTime.Now
@@ -139,16 +143,18 @@ namespace MinimalChatApplication.Controllers
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
+
             // Return a SendMessageResponse with the relevant message data
             var response = new sendMessageResponse
             {
-                SenderId = message.SenderId,
+                MessageId=message.Id,
+                SenderId = senderId,
                 ReceiverId = message.ReceiverId,
                 Content = message.Content,
                 Timestamp = message.Timestamp
             };
 
-            return CreatedAtAction("GetMessage", new { id = message.Id }, response);
+            return Ok(response);
         }
 
 
@@ -163,7 +169,7 @@ namespace MinimalChatApplication.Controllers
             }
 
             // Check if the user is authorized to delete the message (should be the sender)
-            int userId = GetUserId(HttpContext);
+            int userId = GetCurrentUserId();
             if (message.SenderId != userId)
             {
                 return Unauthorized(new { error = "Unauthorized access" });
@@ -181,15 +187,11 @@ namespace MinimalChatApplication.Controllers
             return _context.Messages.Any(e => e.Id == id);
         }
 
-        private int GetUserId(HttpContext context)
+        private int GetCurrentUserId()
         {
-            var authorizationHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-
-            var token = authorizationHeader?.Replace("Bearer ", "");
-
-            var user = _context.Users.FirstOrDefault(u => u.Token == token);
-
-            return user?.Id ?? -1;
+            var currentUser = HttpContext.User;
+            var currentUserId = Convert.ToInt32(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            return currentUserId;
         }
     }
 }
