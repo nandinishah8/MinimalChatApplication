@@ -118,11 +118,12 @@ namespace MinimalChatApplication.Controllers
             return Ok(message);
         }
 
+
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
 
         [HttpPost]
-        public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
+        public async Task<ActionResult<Message>> PostMessage(Message message)
         {
             if (!ModelState.IsValid)
             {
@@ -130,7 +131,7 @@ namespace MinimalChatApplication.Controllers
             }
             var senderId = GetCurrentUserId();
 
-            // Create a new Message object based on the request data
+        
             var message = new Message
             {
                 SenderId = senderId,
@@ -139,9 +140,11 @@ namespace MinimalChatApplication.Controllers
                 ReceiverId = request.ReceiverId,
                 Timestamp = DateTime.Now
             };
+              
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
+
 
 
             // Return a SendMessageResponse with the relevant message data
@@ -155,6 +158,9 @@ namespace MinimalChatApplication.Controllers
             };
 
             return Ok(response);
+
+           
+
         }
 
 
