@@ -37,6 +37,8 @@ namespace MinimalChatApplication.Controllers
             var conversation = _context.Messages
                 .Where(m => (m.SenderId == currentUserId && m.ReceiverId == request.UserId) ||
                             (m.SenderId == request.UserId && m.ReceiverId == currentUserId));
+
+             
             // Check if the conversation exists
             if (!conversation.Any())
             {
@@ -70,25 +72,27 @@ namespace MinimalChatApplication.Controllers
                 ReceiverId = m.ReceiverId,
                 Content = m.Content,
                 Timestamp = m.Timestamp
-            });
+            })
 
-            return Ok(new ConversationHistoryResponseDto { Messages = messages });
+            .ToListAsync();
+
+            return Ok(conversation);
 
         }
 
-        // GET: api/Messages/5
-        [HttpGet("{id}")]
-        public async Task<ActionResult<Message>> GetMessage(int id)
-        {
-            var message = await _context.Messages.FindAsync(id);
+        //// GET: api/Messages/5
+        //[HttpGet("{id}")]
+        //public async Task<ActionResult<Message>> GetMessage(int id)
+        //{
+        //    var message = await _context.Messages.FindAsync(id);
 
-            if (message == null)
-            {
-                return NotFound();
-            }
+        //    if (message == null)
+        //    {
+        //        return NotFound();
+        //    }
 
-            return message;
-        }
+        //    return message;
+        //}
 
         // PUT: api/Messages/5
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
@@ -128,7 +132,7 @@ namespace MinimalChatApplication.Controllers
         }
 
         // POST: api/Messages
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        
 
         [HttpPost]
         public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
