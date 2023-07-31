@@ -1,15 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MinimalChatApplication.Data;
 using MinimalChatApplication.Models;
-using Microsoft.AspNetCore.Authorization;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace MinimalChatApplication.Controllers
 {
@@ -64,7 +62,7 @@ namespace MinimalChatApplication.Controllers
 
             return Ok(responseDto);
 
-            
+
 
 
         }
@@ -88,7 +86,7 @@ namespace MinimalChatApplication.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> PutMessage(int id, Message message)
         {
-            var userId = GetUserId(HttpContext);
+            var userId = GetCurrentUserId();
 
             if (userId == -1)
             {
@@ -121,9 +119,9 @@ namespace MinimalChatApplication.Controllers
         }
 
 
-
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+
         [HttpPost]
         public async Task<ActionResult<Message>> PostMessage(Message message)
         {
@@ -131,27 +129,43 @@ namespace MinimalChatApplication.Controllers
             {
                 return BadRequest(new { message = "message sending failed due to validation errors." });
             }
+            var senderId = GetCurrentUserId();
 
-            int userId = GetUserId(HttpContext);
-
-            if (userId == -1)
+        
+            var message = new Message
             {
-                return Unauthorized(new { message = "Unauthorized access" });
-            }
+                SenderId = senderId,
 
-            message.SenderId = userId;
-            message.Timestamp = DateTime.Now;
+                Content = request.Content,
+                ReceiverId = request.ReceiverId,
+                Timestamp = DateTime.Now
+            };
+              
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetMessage", new { id = message.Id }, message);
+
+
+            // Return a SendMessageResponse with the relevant message data
+            var response = new sendMessageResponse
+            {
+                MessageId=message.Id,
+                SenderId = senderId,
+                ReceiverId = message.ReceiverId,
+                Content = message.Content,
+                Timestamp = message.Timestamp
+            };
+
+            return Ok(response);
+
+           
+
         }
 
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
-
         public async Task<IActionResult> DeleteMessage(int id)
         {
             var message = await _context.Messages.FindAsync(id);
@@ -161,7 +175,7 @@ namespace MinimalChatApplication.Controllers
             }
 
             // Check if the user is authorized to delete the message (should be the sender)
-            int userId = GetUserId(HttpContext);
+            int userId = GetCurrentUserId();
             if (message.SenderId != userId)
             {
                 return Unauthorized(new { error = "Unauthorized access" });
@@ -172,24 +186,18 @@ namespace MinimalChatApplication.Controllers
 
             return Ok(new { message = "Message deleted successfully" });
         }
-    
+
 
         private bool MessageExists(int id)
         {
             return _context.Messages.Any(e => e.Id == id);
         }
 
-        private int GetUserId(HttpContext context)
+        private int GetCurrentUserId()
         {
-            var authorizationHeader = context.Request.Headers["Authorization"].FirstOrDefault();
-
-            var token = authorizationHeader?.Replace("Bearer ", "");
-
-            var user = _context.Users.FirstOrDefault(u => u.Token == token);
-
-            return user?.Id ?? -1;
-        } 
-
+            var currentUser = HttpContext.User;
+            var currentUserId = Convert.ToInt32(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            return currentUserId;
+        }
     }
 }
-
