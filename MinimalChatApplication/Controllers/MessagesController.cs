@@ -72,11 +72,11 @@ namespace MinimalChatApplication.Controllers
                 ReceiverId = m.ReceiverId,
                 Content = m.Content,
                 Timestamp = m.Timestamp
-            })
+            });
 
-            .ToListAsync();
+            //.ToListAsync();
 
-            return Ok(conversation);
+            return Ok(new ConversationHistoryResponseDto { Messages = messages });
 
         }
 
