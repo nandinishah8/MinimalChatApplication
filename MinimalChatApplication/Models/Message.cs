@@ -3,8 +3,7 @@
     public class Message
     {
         public int Id { get; set; }
-        public int userId { get; set; }
-
+      
         public int SenderId { get; set; }
         public User Sender { get; set; }
 

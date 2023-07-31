@@ -3,13 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Http;
-using System.Globalization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MinimalChatApplication.Data;
 using MinimalChatApplication.Models;
-using Microsoft.AspNetCore.Authorization;
-using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
 
 namespace MinimalChatApplication.Controllers
 {
@@ -64,7 +61,7 @@ namespace MinimalChatApplication.Controllers
 
             return Ok(responseDto);
 
-            
+
 
 
         }
@@ -120,10 +117,9 @@ namespace MinimalChatApplication.Controllers
             return Ok(message);
         }
 
-    
-
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
+        [HttpPost]
         [HttpPost]
         public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
         {
@@ -158,7 +154,6 @@ namespace MinimalChatApplication.Controllers
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
-
         public async Task<IActionResult> DeleteMessage(int id)
         {
             var message = await _context.Messages.FindAsync(id);
@@ -179,7 +174,7 @@ namespace MinimalChatApplication.Controllers
 
             return Ok(new { message = "Message deleted successfully" });
         }
-    
+
 
         private bool MessageExists(int id)
         {
@@ -195,8 +190,6 @@ namespace MinimalChatApplication.Controllers
             var user = _context.Users.FirstOrDefault(u => u.Token == token);
 
             return user?.Id ?? -1;
-        } 
-
+        }
     }
 }
-
