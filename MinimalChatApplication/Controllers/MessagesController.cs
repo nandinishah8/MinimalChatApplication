@@ -120,39 +120,32 @@ namespace MinimalChatApplication.Controllers
             return Ok(message);
         }
 
-    
+
 
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
+        public async Task<ActionResult<Message>> PostMessage(Message message)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(new { message = "message sending failed due to validation errors." });
             }
 
-            // Create a new Message object based on the request data
-            var message = new Message
+            int userId = GetUserId(HttpContext);
+
+            if (userId == -1)
             {
-                Content = request.Content,
-                ReceiverId = request.ReceiverId,
-                Timestamp = DateTime.Now
-            };
+                return Unauthorized(new { message = "Unauthorized access" });
+            }
+
+            message.SenderId = userId;
+            message.Timestamp = DateTime.Now;
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            // Return a SendMessageResponse with the relevant message data
-            var response = new sendMessageResponse
-            {
-                SenderId = message.SenderId,
-                ReceiverId = message.ReceiverId,
-                Content = message.Content,
-                Timestamp = message.Timestamp
-            };
-
-            return CreatedAtAction("GetMessage", new { id = message.Id }, response);
+            return CreatedAtAction("GetMessage", new { id = message.Id }, message);
         }
 
 
