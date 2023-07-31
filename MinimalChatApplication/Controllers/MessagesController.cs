@@ -24,46 +24,55 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Messages
         [HttpGet]
-        public async Task<ActionResult<ConversationHistoryResponseDto>> GetConversationHistory([FromQuery] ConversationRequest request)
+        public async Task<ActionResult<ConversationHistoryResponseDto>> GetConversationHistory([FromBody] ConversationRequest request)
         {
-            int userId = request.UserId;
+            var currentUser = HttpContext.User;
 
-            if (userId <= 0)
+            var currentUserId = Convert.ToInt32(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+            if (currentUserId == request.UserId)
             {
-                return BadRequest(new { message = "Invalid request parameters" });
+                return BadRequest(new { error = "You cannot retrieve your own conversation history." });
             }
 
-            // Retrieve the conversation history based on the provided parameters
-            var conversationHistory = await _context.Messages
-                .Where(m => (m.ReceiverId == userId && m.ReceiverId == request.UserId)
-                            || (m.SenderId == request.UserId && m.SenderId == userId))
-                .Where(m => request.Before == null || m.Timestamp < request.Before)
-                .OrderByDescending(m => request.Sort == "desc" ? m.Timestamp : m.Timestamp)
-                .Take(request.Count > 0 ? request.Count : 20)
-                .Select(m => new ConversationResponse
-                {
-                    Id = m.Id,
-                    SenderId = m.SenderId,
-                    ReceiverId = m.ReceiverId,
-                    Content = m.Content,
-                    Timestamp = m.Timestamp
-                })
-                .ToListAsync();
-
-            if (conversationHistory.Count == 0)
+            var conversation = _context.Messages
+                .Where(m => (m.SenderId == currentUserId && m.ReceiverId == request.UserId) ||
+                            (m.SenderId == request.UserId && m.ReceiverId == currentUserId));
+            // Check if the conversation exists
+            if (!conversation.Any())
             {
-                return NotFound(new { message = "User or conversation not found" });
+                return NotFound(new { error = "Conversation not found" });
             }
 
-            var responseDto = new ConversationHistoryResponseDto
+            // Apply filters if provided
+            if (request.Before.HasValue)
             {
-                Messages = conversationHistory
-            };
+                conversation = conversation.Where(m => m.Timestamp < request.Before);
+            }
 
-            return Ok(responseDto);
+            // Apply sorting
+            if (request.Sort.ToLower() == "desc")
+            {
+                conversation = conversation.OrderByDescending(m => m.Timestamp);
+            }
+            else
+            {
+                conversation = conversation.OrderBy(m => m.Timestamp);
+            }
 
+            // Limit the number of messages to be retrieved
+            conversation = conversation.Take(request.Count);
 
+            // Select only the required properties for the response and map to the DTO
+            var messages = conversation.Select(m => new ConversationResponse
+            {
+                Id = m.Id,
+                SenderId = m.SenderId,
+                ReceiverId = m.ReceiverId,
+                Content = m.Content,
+                Timestamp = m.Timestamp
+            });
 
+            return Ok(new ConversationHistoryResponseDto { Messages = messages });
 
         }
 
@@ -118,12 +127,11 @@ namespace MinimalChatApplication.Controllers
             return Ok(message);
         }
 
-
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
 
         [HttpPost]
-        public async Task<ActionResult<Message>> PostMessage(Message message)
+        public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
         {
             if (!ModelState.IsValid)
             {
@@ -131,7 +139,7 @@ namespace MinimalChatApplication.Controllers
             }
             var senderId = GetCurrentUserId();
 
-        
+            // Create a new Message object based on the request data
             var message = new Message
             {
                 SenderId = senderId,
@@ -140,17 +148,15 @@ namespace MinimalChatApplication.Controllers
                 ReceiverId = request.ReceiverId,
                 Timestamp = DateTime.Now
             };
-              
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
 
-
             // Return a SendMessageResponse with the relevant message data
             var response = new sendMessageResponse
             {
-                MessageId=message.Id,
+                MessageId = message.Id,
                 SenderId = senderId,
                 ReceiverId = message.ReceiverId,
                 Content = message.Content,
@@ -158,9 +164,6 @@ namespace MinimalChatApplication.Controllers
             };
 
             return Ok(response);
-
-           
-
         }
 
 
