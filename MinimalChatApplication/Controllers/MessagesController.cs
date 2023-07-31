@@ -24,7 +24,7 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Messages
         [HttpGet]
-        public async Task<ActionResult<ConversationHistoryResponseDto>> GetConversationHistory([FromQuery] ConversationRequest request)
+        public async Task<ActionResult<ConversationHistoryResponseDto>> GetConversationHistory([FromBody] ConversationRequest request)
         {
             int userId = request.UserId;
 
