@@ -26,41 +26,45 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Messages
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Message>>> GetConversationHistory(History history)
+        public async Task<ActionResult<ConversationHistoryResponseDto>> GetConversationHistory([FromQuery] ConversationRequest request)
         {
-            int userId = GetUserId(HttpContext);
+            int userId = request.UserId;
 
-            if (userId == -1)
-            {
-                return Unauthorized(new { message = "Unauthorized access" });
-            }
-             
-            if (history == null || history.userId <= 0)
+            if (userId <= 0)
             {
                 return BadRequest(new { message = "Invalid request parameters" });
             }
+
             // Retrieve the conversation history based on the provided parameters
             var conversationHistory = await _context.Messages
-                .Where(m => (m.ReceiverId == userId && m.ReceiverId == history.userId)
-                            || (m.SenderId == history.userId && m.SenderId == userId))
-                .Where(m => history.before == default || m.Timestamp < history.before)
-                .OrderByDescending(m => history.sort == "desc" ? m.Timestamp : default)
-                .Take(history.count > 0 ? history.count : 20).Select(u => new
+                .Where(m => (m.ReceiverId == userId && m.ReceiverId == request.UserId)
+                            || (m.SenderId == request.UserId && m.SenderId == userId))
+                .Where(m => request.Before == null || m.Timestamp < request.Before)
+                .OrderByDescending(m => request.Sort == "desc" ? m.Timestamp : m.Timestamp)
+                .Take(request.Count > 0 ? request.Count : 20)
+                .Select(m => new ConversationResponse
                 {
-                    id = u.Id,
-                    senderId = u.SenderId,
-                    receiverId = u.ReceiverId,
-                    content = u.Content,
-                    timestamp = u.Timestamp
+                    Id = m.Id,
+                    SenderId = m.SenderId,
+                    ReceiverId = m.ReceiverId,
+                    Content = m.Content,
+                    Timestamp = m.Timestamp
                 })
-                     .ToListAsync();
+                .ToListAsync();
 
             if (conversationHistory.Count == 0)
             {
                 return NotFound(new { message = "User or conversation not found" });
             }
 
-            return Ok(conversationHistory);
+            var responseDto = new ConversationHistoryResponseDto
+            {
+                Messages = conversationHistory
+            };
+
+            return Ok(responseDto);
+
+            
 
 
         }
@@ -121,29 +125,36 @@ namespace MinimalChatApplication.Controllers
         // POST: api/Messages
         // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
         [HttpPost]
-        public async Task<ActionResult<Message>> PostMessage(Message message)
+        public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(new { message = "message sending failed due to validation errors." });
             }
 
-            int userId = GetUserId(HttpContext);
-            Console.WriteLine(userId); 
-
-            if (userId == -1)
+            // Create a new Message object based on the request data
+            var message = new Message
             {
-                return Unauthorized(new { message = "Unauthorized access" });
-            }
-
-            message.SenderId = userId;
-            message.Timestamp = DateTime.Now;
+                Content = request.Content,
+                ReceiverId = request.ReceiverId,
+                Timestamp = DateTime.Now
+            };
 
             _context.Messages.Add(message);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction("GetMessage", new { id = message.Id }, message);
+            // Return a SendMessageResponse with the relevant message data
+            var response = new sendMessageResponse
+            {
+                SenderId = message.SenderId,
+                ReceiverId = message.ReceiverId,
+                Content = message.Content,
+                Timestamp = message.Timestamp
+            };
+
+            return CreatedAtAction("GetMessage", new { id = message.Id }, response);
         }
+
 
         // DELETE: api/Messages/5
         [HttpDelete("{id}")]
