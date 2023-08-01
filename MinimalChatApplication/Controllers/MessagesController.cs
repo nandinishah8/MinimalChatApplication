@@ -23,21 +23,24 @@ namespace MinimalChatApplication.Controllers
         }
 
         // GET: api/Messages
-        [HttpGet]
-        public async Task<ActionResult<ConversationHistoryResponseDto>> GetConversationHistory([FromBody] ConversationRequest request)
+        [HttpGet("{id}")]
+        public async Task<ActionResult> GetConversationHistory(int id)
         {
+            Console.WriteLine("log"+id);
             var currentUser = HttpContext.User;
 
             var currentUserId = Convert.ToInt32(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value);
-            if (currentUserId == request.UserId)
+            Console.WriteLine("courrent"+currentUserId);
+            if (currentUserId == id)
             {
                 return BadRequest(new { error = "You cannot retrieve your own conversation history." });
             }
 
             var conversation = _context.Messages
-                .Where(m => (m.SenderId == currentUserId && m.ReceiverId == request.UserId) ||
-                            (m.SenderId == request.UserId && m.ReceiverId == currentUserId));
+                .Where(m => (m.SenderId == currentUserId && m.ReceiverId == id) ||
+                            (m.SenderId == id && m.ReceiverId == currentUserId));
 
+            Console.WriteLine(conversation);
              
             // Check if the conversation exists
             if (!conversation.Any())
@@ -46,23 +49,23 @@ namespace MinimalChatApplication.Controllers
             }
 
             // Apply filters if provided
-            if (request.Before.HasValue)
-            {
-                conversation = conversation.Where(m => m.Timestamp < request.Before);
-            }
+            //if (request.Before.HasValue)
+            //{
+            //    conversation = conversation.Where(m => m.Timestamp < request.Before);
+            //}
 
-            // Apply sorting
-            if (request.Sort.ToLower() == "desc")
-            {
-                conversation = conversation.OrderByDescending(m => m.Timestamp);
-            }
-            else
-            {
-                conversation = conversation.OrderBy(m => m.Timestamp);
-            }
+            //// Apply sorting
+            //if (request.Sort.ToLower() == "desc")
+            //{
+            //    conversation = conversation.OrderByDescending(m => m.Timestamp);
+            //}
+            //else
+            //{
+            //    conversation = conversation.OrderBy(m => m.Timestamp);
+            //}
 
             // Limit the number of messages to be retrieved
-            conversation = conversation.Take(request.Count);
+            //conversation = conversation.Take(request.Count);
 
             // Select only the required properties for the response and map to the DTO
             var messages = conversation.Select(m => new ConversationResponse
@@ -176,6 +179,7 @@ namespace MinimalChatApplication.Controllers
         public async Task<IActionResult> DeleteMessage(int id)
         {
             var message = await _context.Messages.FindAsync(id);
+
             if (message == null)
             {
                 return NotFound(new { message = "Message not found" });
