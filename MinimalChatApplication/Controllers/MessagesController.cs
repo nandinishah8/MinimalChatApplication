@@ -48,25 +48,7 @@ namespace MinimalChatApplication.Controllers
                 return NotFound(new { error = "Conversation not found" });
             }
 
-            // Apply filters if provided
-            //if (request.Before.HasValue)
-            //{
-            //    conversation = conversation.Where(m => m.Timestamp < request.Before);
-            //}
-
-            //// Apply sorting
-            //if (request.Sort.ToLower() == "desc")
-            //{
-            //    conversation = conversation.OrderByDescending(m => m.Timestamp);
-            //}
-            //else
-            //{
-            //    conversation = conversation.OrderBy(m => m.Timestamp);
-            //}
-
-            // Limit the number of messages to be retrieved
-            //conversation = conversation.Take(request.Count);
-
+          
             // Select only the required properties for the response and map to the DTO
             var messages = conversation.Select(m => new ConversationResponse
             {
@@ -83,26 +65,16 @@ namespace MinimalChatApplication.Controllers
 
         }
 
-        //// GET: api/Messages/5
-        //[HttpGet("{id}")]
-        //public async Task<ActionResult<Message>> GetMessage(int id)
-        //{
-        //    var message = await _context.Messages.FindAsync(id);
-
-        //    if (message == null)
-        //    {
-        //        return NotFound();
-        //    }
-
-        //    return message;
-        //}
+        
 
         // PUT: api/Messages/5
-        // To protect from overposting attacks, see https://go.microsoft.com/fwlink/?linkid=2123754
-        [HttpPut("{id}")]
-        public async Task<IActionResult> PutMessage(int id, Message message)
+       
+        [HttpPut("{messageId}")]
+        public async Task<IActionResult> EditMessage(int messageId,  [FromBody] EditMessage editMessage)
         {
+            //var currentUser = HttpContext.User;
             var userId = GetCurrentUserId();
+           // var currentUserId = Convert.ToInt32(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value);
 
             if (userId == -1)
             {
@@ -114,42 +86,48 @@ namespace MinimalChatApplication.Controllers
                 return BadRequest(new { message = "invalid request parameter." });
             }
 
-            var existingMessage = await _context.Messages.FindAsync(id);
+            var existingMessage = await _context.Messages.FirstOrDefaultAsync(m => m.Id == messageId && (m.SenderId == userId || m.ReceiverId == userId));
 
-            Console.WriteLine(existingMessage);
+            //Console.WriteLine(existingMessage);
 
             if (existingMessage == null)
             {
                 return NotFound(new { error = "Message not found." });
             }
 
-            if (message == null)
-            {
-                return NotFound(new { message = "User or conversation not found" });
-            }
+   
 
-            existingMessage.Content = message.Content;
+            // Update the message content
+            existingMessage.Content = editMessage.Content;
+            existingMessage.Timestamp = DateTime.Now;
+
+            // Save the changes to the database
             await _context.SaveChangesAsync();
 
-            return Ok(message);
+            // Return 200 OK with a success message
+            return Ok(new { message = "Message edited successfully" });
+         
         }
 
         // POST: api/Messages
         
 
-        [HttpPost]
-        public async Task<ActionResult<sendMessageResponse>> PostMessage(sendMessageRequest request)
+        [HttpPost("/api/messages")]
+        public async Task<ActionResult<sendMessageResponse>> sendMessages(sendMessageRequest request)
         {
             if (!ModelState.IsValid)
             {
                 return BadRequest(new { message = "message sending failed due to validation errors." });
             }
-            var senderId = GetCurrentUserId();
+            //var senderId = GetCurrentUserId();
+            var currentUser = HttpContext.User;
+
+            var senderId = currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
             // Create a new Message object based on the request data
             var message = new Message
             {
-                SenderId = senderId,
+                SenderId = Convert.ToInt32(senderId),
 
                 Content = request.Content,
                 ReceiverId = request.ReceiverId,
@@ -164,7 +142,7 @@ namespace MinimalChatApplication.Controllers
             var response = new sendMessageResponse
             {
                 MessageId = message.Id,
-                SenderId = senderId,
+                SenderId = message.SenderId,
                 ReceiverId = message.ReceiverId,
                 Content = message.Content,
                 Timestamp = message.Timestamp
@@ -175,22 +153,24 @@ namespace MinimalChatApplication.Controllers
 
 
         // DELETE: api/Messages/5
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteMessage(int id)
+        [HttpDelete("/api/messages/{messageId}")]
+        public async Task<IActionResult> DeleteMessage(int messageId)
         {
-            var message = await _context.Messages.FindAsync(id);
+
+
+            var currentUser = HttpContext.User;
+            var currentUserId = Convert.ToInt32(currentUser.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+
+
+            var message = await _context.Messages
+                .Where(m => m.Id == messageId && (m.SenderId == currentUserId))
+                .SingleOrDefaultAsync();
 
             if (message == null)
             {
                 return NotFound(new { message = "Message not found" });
             }
 
-            // Check if the user is authorized to delete the message (should be the sender)
-            int userId = GetCurrentUserId();
-            if (message.SenderId != userId)
-            {
-                return Unauthorized(new { error = "Unauthorized access" });
-            }
 
             _context.Messages.Remove(message);
             await _context.SaveChangesAsync();

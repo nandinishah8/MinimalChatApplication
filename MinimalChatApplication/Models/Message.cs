@@ -16,6 +16,8 @@ namespace MinimalChatApplication.Models
         [Required]
         public string Content { get; set; }
         public DateTime Timestamp { get; set; }
+        
+        
         // Navigation properties
         public User Sender { get; set; }
         public User Receiver { get; set; }
