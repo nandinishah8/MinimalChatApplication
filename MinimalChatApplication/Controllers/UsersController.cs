@@ -33,6 +33,7 @@ namespace MinimalChatApplication.Controllers
 
         // GET: api/Users
         [HttpGet]
+        [Authorize]
        
 
         public async Task<ActionResult<IEnumerable<User>>> GetUser()
